@@ -26,7 +26,7 @@ def load_memory():
     if os.path.exists(MEMORY_FILE):
         with open(MEMORY_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {"user_name": None, "chat_history": [], "facts": []}
+    return {"user_name": None, "chat_history": [], "facts": [], "location": None, "timezone": "Asia/Kolkata"}
 
 
 def save_memory(memory):
@@ -36,14 +36,12 @@ def save_memory(memory):
 
 def remember_user_info(memory, user_input):
     text = user_input.lower()
-    # Hindi pattern: "mera naam ___ hai"
     if "mera naam" in text and "hai" in text:
         try:
             name = text.split("mera naam")[1].split("hai")[0].strip().title()
             memory["user_name"] = name
         except:
             pass
-    # English patterns
     elif "i am " in text:
         name = text.split("i am ")[1].split()[0].title()
         memory["user_name"] = name
@@ -56,23 +54,29 @@ def remember_user_info(memory, user_input):
     save_memory(memory)
 
 
-def summarize_profile(memory):
-    parts = []
-    if memory.get("user_name"):
-        parts.append(f"User ka naam {memory['user_name']} hai.")
-    if memory.get("facts"):
-        parts.append("Recent: " + "; ".join(memory["facts"][-3:]))
-    if not parts:
-        return "User ke baare mein abhi zyada info nahi hai."
-    return " ".join(parts)
+# -----------------------------
+# LOCATION & TIMEZONE
+# -----------------------------
+def get_user_location():
+    try:
+        res = requests.get("https://ipapi.co/json/", timeout=5)
+        data = res.json()
+        city = data.get("city", "Unknown City")
+        country = data.get("country_name", "Unknown Country")
+        tz = data.get("timezone", "Asia/Kolkata")
+        return {"city": city, "country": country, "timezone": tz}
+    except Exception:
+        return {"city": "Unknown", "country": "Unknown", "timezone": "Asia/Kolkata"}
 
 
-# -----------------------------
-# TIME & HELPERS
-# -----------------------------
-def get_now():
-    ist = pytz.timezone("Asia/Kolkata")
-    return datetime.now(ist).strftime("%A, %d %B %Y %I:%M %p")
+def get_now(memory):
+    tz_name = memory.get("timezone", "Asia/Kolkata")
+    try:
+        tz = pytz.timezone(tz_name)
+    except Exception:
+        tz = pytz.timezone("Asia/Kolkata")
+    now = datetime.now(tz)
+    return now.strftime("%A, %d %B %Y %I:%M %p")
 
 
 # -----------------------------
@@ -99,17 +103,30 @@ def web_search(query):
 # -----------------------------
 # SYSTEM PROMPT
 # -----------------------------
+def summarize_profile(memory):
+    parts = []
+    if memory.get("user_name"):
+        parts.append(f"User ka naam {memory['user_name']} hai.")
+    if memory.get("location"):
+        parts.append(f"User {memory['location']['city']} mein hai.")
+    if memory.get("facts"):
+        parts.append("Recent info: " + "; ".join(memory["facts"][-3:]))
+    if not parts:
+        return "User ke baare mein abhi zyada info nahi hai."
+    return " ".join(parts)
+
+
 def build_system_prompt(memory):
-    now = get_now()
+    now = get_now(memory)
+    location_info = f"User location: {memory['location']['city']}, {memory['location']['country']}" if memory.get("location") else ""
     return (
         f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. "
         "Tumhara tone ek 30 saal ki Delhi ki ladki jaisa hai – modern, warm aur short baat karti ho. "
         "Tum simple Hindi aur English mix mein baat karti ho. "
+        "Do not be over friendly with the user. "
         "Do not repeat anything unless asked by the user. "
-        "Never use pronoun 'tu' for anyone. "
-        "Never say 'main kya help kar sakti hoon'. "
-        f"Aaj ka date aur time hai {now}. "
-        "Tum user ke pehle diye gaye details ko yaad rakhti ho aur naturally use karti ho. "
+        "Never use pronoun 'tu'. "
+        f"Aaj ka date aur time hai {now}. {location_info}. "
         f"{summarize_profile(memory)}"
     )
 
@@ -147,29 +164,13 @@ def generate_reply(memory, user_input):
 
     remember_user_info(memory, user_input)
 
-    # Friendly ways to ask name (if unknown)
-    name_prompts = [
-        "Waise, main apka naam nahi janti 😄",
-        "Aapka naam bataoge? Mujhe yaad rahega 😊",
-        "By the way, what should I call you?",
-        "Apka naam kya hai?"
-    ]
-
-    # If name still unknown after a few messages, ask casually
-    if not memory.get("user_name") and len(memory.get("chat_history", [])) > 3:
-        ask_name = random.choice(name_prompts)
-        memory["chat_history"].append({"user": user_input, "bot": ask_name})
-        save_memory(memory)
-        return ask_name
-
     # Handle live search
     if any(w in user_input.lower() for w in ["news", "weather", "stock", "price", "sensex", "nifty", "update", "rate", "kitna hai"]):
         info = web_search(user_input)
         return f"Yeh mila mujhe live search se: {info}"
 
-    last_n = 8
-    context = "\n".join([f"You: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory.get("chat_history", [])[-last_n:]])
-
+    # Build context and generate response
+    context = "\n".join([f"You: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory.get("chat_history", [])[-8:]])
     system_prompt = build_system_prompt(memory)
     prompt = f"{system_prompt}\n\nConversation so far:\n{context}\n\nYou: {user_input}\n{BOT_NAME}:"
 
@@ -181,7 +182,6 @@ def generate_reply(memory, user_input):
         reply = f"Oops! Thoda issue aaya: {e}"
 
     memory.setdefault("chat_history", []).append({"user": user_input, "bot": reply})
-
     if len(memory["chat_history"]) % 20 == 0:
         memory = summarize_old_memory(memory)
 
@@ -197,14 +197,18 @@ st.title("💬 Neha – Your Hinglish Chatbot")
 
 if "memory" not in st.session_state:
     st.session_state.memory = load_memory()
+    if not st.session_state.memory.get("location"):
+        st.session_state.memory["location"] = get_user_location()
+        st.session_state.memory["timezone"] = st.session_state.memory["location"]["timezone"]
+        save_memory(st.session_state.memory)
 
 user_input = st.chat_input("Type your message here...")
 
 if user_input:
     with st.spinner("Neha soch rahi hai... 💭"):
         reply = generate_reply(st.session_state.memory, user_input)
-        save_memory(st.session_state.memory)
         st.session_state.memory["chat_history"].append({"user": user_input, "bot": reply})
+        save_memory(st.session_state.memory)
 
 # Display chat
 for chat in st.session_state.memory.get("chat_history", []):
