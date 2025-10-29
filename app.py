@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 import pytz
 import requests
+import random
 
 # -----------------------------
 # CONFIGURATION
@@ -35,12 +36,23 @@ def save_memory(memory):
 
 def remember_user_info(memory, user_input):
     text = user_input.lower()
+    # Hindi pattern: "mera naam ___ hai"
     if "mera naam" in text and "hai" in text:
         try:
             name = text.split("mera naam")[1].split("hai")[0].strip().title()
             memory["user_name"] = name
-        except Exception:
+        except:
             pass
+    # English patterns
+    elif "i am " in text:
+        name = text.split("i am ")[1].split()[0].title()
+        memory["user_name"] = name
+    elif "this is " in text:
+        name = text.split("this is ")[1].split()[0].title()
+        memory["user_name"] = name
+    elif "my name is " in text:
+        name = text.split("my name is ")[1].split()[0].title()
+        memory["user_name"] = name
     save_memory(memory)
 
 
@@ -67,7 +79,7 @@ def get_now():
 # WEB SEARCH (via Serper)
 # -----------------------------
 def web_search(query):
-    if not SERPER_API_KEY or "YOUR_SERPER_API_KEY" in SERPER_API_KEY:
+    if not SERPER_API_KEY:
         return "Live search unavailable."
     try:
         headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
@@ -90,12 +102,11 @@ def web_search(query):
 def build_system_prompt(memory):
     now = get_now()
     return (
-        f"Tum ek female Hinglish chatbot ho jiska naam {BOT_NAME} hai. "
-        "Tumhara tone ek 30 saal ki Delhi ki ladki jaisa hai – modern, warm aur short baat karne wali. "
+        f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. "
+        "Tumhara tone ek 30 saal ki Delhi ki ladki jaisa hai – modern, warm aur short baat karti ho. "
         "Tum simple Hindi aur English mix mein baat karti ho. "
-        "Do not repeat things unless asked by the user. "
+        "Do not repeat anything unless asked by the user. "
         "Never use pronoun 'tu' for anyone. "
-        "Don't be over friendly. "
         "Never say 'main kya help kar sakti hoon'. "
         f"Aaj ka date aur time hai {now}. "
         "Tum user ke pehle diye gaye details ko yaad rakhti ho aur naturally use karti ho. "
@@ -136,20 +147,22 @@ def generate_reply(memory, user_input):
 
     remember_user_info(memory, user_input)
 
-    # Ask for user's name if unknown
-    if not memory.get("user_name"):
-        if "mera naam" in user_input.lower():
-            try:
-                name = user_input.lower().split("mera naam", 1)[1].split("hai", 1)[0].strip().title()
-                memory["user_name"] = name
-                save_memory(memory)
-                return f"Nice to meet you, {name}! Chalo baat karte hain 😊"
-            except Exception:
-                return "Aapka naam kya hai?"
-        else:
-            return "Hey! Pehle mujhe apna naam batao 😊"
+    # Friendly ways to ask name (if unknown)
+    name_prompts = [
+        "Waise, main apka naam nahi janti 😄",
+        "Aapka naam bataoge? Mujhe yaad rahega 😊",
+        "By the way, what should I call you?",
+        "Apka naam kya hai?"
+    ]
 
-    # Handle live search queries
+    # If name still unknown after a few messages, ask casually
+    if not memory.get("user_name") and len(memory.get("chat_history", [])) > 3:
+        ask_name = random.choice(name_prompts)
+        memory["chat_history"].append({"user": user_input, "bot": ask_name})
+        save_memory(memory)
+        return ask_name
+
+    # Handle live search
     if any(w in user_input.lower() for w in ["news", "weather", "stock", "price", "sensex", "nifty", "update", "rate", "kitna hai"]):
         info = web_search(user_input)
         return f"Yeh mila mujhe live search se: {info}"
@@ -185,23 +198,16 @@ st.title("💬 Neha – Your Hinglish Chatbot")
 if "memory" not in st.session_state:
     st.session_state.memory = load_memory()
 
-# Display existing conversation
-for chat in st.session_state.memory.get("chat_history", []):
-    with st.chat_message("user"):
-        st.markdown(chat["user"])
-    with st.chat_message("assistant"):
-        st.markdown(chat["bot"])
+user_input = st.chat_input("Type your message here...")
 
-# Input box
-if prompt := st.chat_input("Type your message here..."):
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
+if user_input:
     with st.spinner("Neha soch rahi hai... 💭"):
-        reply = generate_reply(st.session_state.memory, prompt)
+        reply = generate_reply(st.session_state.memory, user_input)
         save_memory(st.session_state.memory)
+        st.session_state.memory["chat_history"].append({"user": user_input, "bot": reply})
 
-    with st.chat_message("assistant"):
-        st.markdown(reply)
-
-
+# Display chat
+for chat in st.session_state.memory.get("chat_history", []):
+    st.markdown(f"**You:** {chat['user']}")
+    st.markdown(f"**Neha:** {chat['bot']}")
+    st.markdown("---")
