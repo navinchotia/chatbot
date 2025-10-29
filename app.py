@@ -39,7 +39,7 @@ def remember_user_info(memory, user_input):
         try:
             name = text.split("mera naam")[1].split("hai")[0].strip().title()
             memory["user_name"] = name
-        except:
+        except Exception:
             pass
     save_memory(memory)
 
@@ -67,7 +67,7 @@ def get_now():
 # WEB SEARCH (via Serper)
 # -----------------------------
 def web_search(query):
-    if not SERPER_API_KEY:
+    if not SERPER_API_KEY or "YOUR_SERPER_API_KEY" in SERPER_API_KEY:
         return "Live search unavailable."
     try:
         headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
@@ -142,7 +142,7 @@ def generate_reply(memory, user_input):
                 memory["user_name"] = name
                 save_memory(memory)
                 return f"Nice to meet you, {name}! Chalo baat karte hain 😊"
-            except:
+            except Exception:
                 return "Aapka naam kya hai?"
         else:
             return "Hey! Pehle mujhe apna naam batao 😊"
@@ -183,17 +183,21 @@ st.title("💬 Neha – Your Hinglish Chatbot")
 if "memory" not in st.session_state:
     st.session_state.memory = load_memory()
 
-user_input = st.chat_input("Type your message here...")
+# Display existing conversation
+for chat in st.session_state.memory.get("chat_history", []):
+    with st.chat_message("user"):
+        st.markdown(chat["user"])
+    with st.chat_message("assistant"):
+        st.markdown(chat["bot"])
 
-if user_input:
+# Input box
+if prompt := st.chat_input("Type your message here..."):
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
     with st.spinner("Neha soch rahi hai... 💭"):
-        reply = generate_reply(st.session_state.memory, user_input)
+        reply = generate_reply(st.session_state.memory, prompt)
         save_memory(st.session_state.memory)
 
-# Display chat
-for chat in st.session_state.memory.get("chat_history", []):
-    st.markdown(f"**You:** {chat['user']}")
-    st.markdown(f"**Neha:** {chat['bot']}")
-    st.markdown("---")
-
-
+    with st.chat_message("assistant"):
+        st.markdown(reply)
