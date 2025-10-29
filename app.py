@@ -123,7 +123,6 @@ def build_system_prompt(memory):
         f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. "
         "Tumhara tone ek 30 saal ki Delhi ki ladki jaisa hai – modern, warm aur short baat karti ho. "
         "Tum simple Hindi aur English mix mein baat karti ho. "
-        "Do not be over friendly with the user. "
         "Do not repeat anything unless asked by the user. "
         "Never use pronoun 'tu'. "
         f"Aaj ka date aur time hai {now}. {location_info}. "
@@ -169,11 +168,12 @@ def generate_reply(memory, user_input):
         info = web_search(user_input)
         return f"Yeh mila mujhe live search se: {info}"
 
-    # Build context and generate response
+    # Build context
     context = "\n".join([f"You: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory.get("chat_history", [])[-8:]])
     system_prompt = build_system_prompt(memory)
     prompt = f"{system_prompt}\n\nConversation so far:\n{context}\n\nYou: {user_input}\n{BOT_NAME}:"
 
+    # Generate response
     model = genai.GenerativeModel("gemini-2.5-flash")
     try:
         result = model.generate_content(prompt)
@@ -181,6 +181,7 @@ def generate_reply(memory, user_input):
     except Exception as e:
         reply = f"Oops! Thoda issue aaya: {e}"
 
+    # Save chat to memory
     memory.setdefault("chat_history", []).append({"user": user_input, "bot": reply})
     if len(memory["chat_history"]) % 20 == 0:
         memory = summarize_old_memory(memory)
@@ -190,7 +191,7 @@ def generate_reply(memory, user_input):
 
 
 # -----------------------------
-# STREAMLIT UI
+# STREAMLIT UI (Duplicate-Free)
 # -----------------------------
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
 st.title("💬 Neha – Your Hinglish Chatbot")
@@ -202,16 +203,27 @@ if "memory" not in st.session_state:
         st.session_state.memory["timezone"] = st.session_state.memory["location"]["timezone"]
         save_memory(st.session_state.memory)
 
+# Initialize message history in Streamlit session
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "assistant", "content": "Hi! Main Neha hoon 😊 Ready to chat in Hinglish!"}
+    ]
+
+# Display chat messages
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(f"**You:** {msg['content']}")
+    else:
+        st.markdown(f"**Neha:** {msg['content']}")
+    st.markdown("---")
+
+# Chat input
 user_input = st.chat_input("Type your message here...")
 
 if user_input:
-    with st.spinner("Neha soch rahi hai... 💭"):
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.spinner("Neha type kar rahi hai... 💭"):
         reply = generate_reply(st.session_state.memory, user_input)
-        st.session_state.memory["chat_history"].append({"user": user_input, "bot": reply})
-        save_memory(st.session_state.memory)
-
-# Display chat
-for chat in st.session_state.memory.get("chat_history", []):
-    st.markdown(f"**You:** {chat['user']}")
-    st.markdown(f"**Neha:** {chat['bot']}")
-    st.markdown("---")
+    st.session_state.messages.append({"role": "assistant", "content": reply})
+    save_memory(st.session_state.memory)
+    st.rerun()
