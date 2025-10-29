@@ -188,7 +188,6 @@ user_input = st.chat_input("Type your message here...")
 if user_input:
     with st.spinner("Neha soch rahi hai... 💭"):
         reply = generate_reply(st.session_state.memory, user_input)
-        st.session_state.memory["chat_history"].append({"user": user_input, "bot": reply})
         save_memory(st.session_state.memory)
 
 # Display chat
@@ -196,4 +195,5 @@ for chat in st.session_state.memory.get("chat_history", []):
     st.markdown(f"**You:** {chat['user']}")
     st.markdown(f"**Neha:** {chat['bot']}")
     st.markdown("---")
+
 
