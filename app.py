@@ -119,7 +119,7 @@ def generate_reply(memory, user_input):
             except:
                 return "Aapka naam kya hai?"
         else:
-            return "Hey! Pehle mujhe apna naam batao 😊"
+            return "Hi! mujhe apna naam batao 😊"
 
     if not memory.get("user_gender"):
         low = user_input.lower()
@@ -130,7 +130,7 @@ def generate_reply(memory, user_input):
         if any(x in low for x in ["female", "f", "ladki", "girl"]):
             memory["user_gender"] = "female"
             save_memory(memory)
-            return f"Got it {memory['user_name']}! Aap female ho. Chalo baat karte hain 😊"
+            return f"Got it {memory['user_name']}! Kya chal raha hai 😊"
         return "Aapka gender kya hai? (male/female)"
 
     if any(w in user_input.lower() for w in ["news", "weather", "stock", "price", "sensex", "nifty", "update", "rate", "kitna hai"]):
@@ -141,7 +141,7 @@ def generate_reply(memory, user_input):
     system_prompt = build_system_prompt(memory)
     prompt = f"{system_prompt}\n\nConversation so far:\n{context}\n\nYou: {user_input}\n{BOT_NAME}:"
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     result = model.generate_content(prompt)
     reply = (result.text or "").strip()
 
