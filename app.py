@@ -209,14 +209,14 @@ st.markdown("""
     h1 {
         text-align: center;
         color: #333333;
-        font-weight: 600;
+        font-weight: 200;
         margin-bottom: 1.5rem;
         font-family: 'Poppins', sans-serif !important;
     }
 
     /* Chat section spacing */
     .stMarkdown {
-        margin: 0.3rem 0 !important;
+        margin: 0.2rem 0 !important;
     }
 
     /* Chat bubbles */
@@ -281,6 +281,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
