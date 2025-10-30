@@ -207,7 +207,7 @@ main {
 h1 {
     font-family: 'Poppins', sans-serif;
     font-weight: 400;
-    color: #333333;
+    color: #555;
     text-align: center;
 }
 
@@ -279,5 +279,6 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
