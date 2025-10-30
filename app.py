@@ -197,55 +197,56 @@ def generate_reply(memory, user_input):
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
 # Add this just after st.set_page_config(...)
 st.cache_data.clear()
-import streamlit.components.v1 as components
+# Inject custom CSS globally
+st.markdown("""
+    <style>
+    /* Use a clean rounded look */
+    html, body, [data-testid="stAppViewContainer"] {
+        font-family: 'Poppins', sans-serif !important;
+        background-color: #f9fafb !important;
+    }
 
-components.html("""
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-<style>
-html, body, [class*="st"] {
-    font-family: 'Poppins', sans-serif !important;
-    background-color: #f7f8fa;
-}
+    h1 {
+        text-align: center;
+        color: #333333;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-family: 'Poppins', sans-serif !important;
+    }
 
-/* Center title */
-h1 {
-    text-align: center;
-    color: #333333;
-    font-weight: 300;
-    margin-bottom: 1.5rem;
-}
+    /* Chat section spacing */
+    .stMarkdown {
+        margin: 0.3rem 0 !important;
+    }
 
-/* Chat messages */
-div[data-testid="stChatMessageContent"] {
-    font-size: 16px;
-    line-height: 1.5;
-    border-radius: 16px;
-    padding: 10px 14px;
-    margin: 6px 0;
-    max-width: 80%;
-}
+    /* Chat bubbles */
+    div[data-testid="stMarkdownContainer"] p {
+        border-radius: 18px;
+        padding: 10px 14px;
+        display: inline-block;
+        max-width: 80%;
+        font-size: 16px;
+        line-height: 1.5;
+    }
 
-/* User bubble (right-aligned) */
-div[data-testid="stChatMessageContent"] p {
-    background-color: #DCF8C6;
-    border-radius: 16px;
-    padding: 8px 12px;
-}
+    /* User (right bubble) */
+    div:has(> p:has(strong:contains("You:"))) p {
+        background-color: #DCF8C6 !important;
+        margin-left: auto !important;
+        color: #111 !important;
+    }
 
-/* Assistant bubble (left-aligned) */
-div[data-testid="stChatMessage"] div[role="paragraph"]:not(:has(strong)) {
-    background-color: #fff;
-    border: 1px solid #eaeaea;
-    border-radius: 16px;
-    padding: 8px 12px;
-}
+    /* Neha (left bubble) */
+    div:has(> p:has(strong:contains("Neha:"))) p {
+        background-color: #fff !important;
+        border: 1px solid #eaeaea;
+        color: #222;
+    }
 
-/* Hide Streamlit default header/footer */
-header, footer, #MainMenu {display: none;}
-</style>
-""",
-height=0,
-)
+    /* Hide Streamlit default header/footer */
+    header, footer, #MainMenu {display: none;}
+    </style>
+""", unsafe_allow_html=True)
 
 st.title("💬 Neha – Your Hinglish AI Friend")
 
@@ -280,6 +281,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
