@@ -194,6 +194,58 @@ def generate_reply(memory, user_input):
 # STREAMLIT UI (Duplicate-Free)
 # -----------------------------
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
+st.markdown("""
+<style>
+/* Overall page */
+main {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Title */
+h1 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #333333;
+    text-align: center;
+}
+
+/* Chat input box */
+[data-testid="stChatInput"] textarea {
+    border-radius: 12px;
+    font-size: 16px;
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+
+/* Chat bubbles */
+.stChatMessage {
+    border-radius: 18px;
+    padding: 10px 15px;
+    margin: 6px 0;
+    max-width: 80%;
+}
+
+/* User bubble (right side) */
+.stChatMessage.user {
+    background-color: #DCF8C6;
+    align-self: flex-end;
+}
+
+/* Neha (bot) bubble (left side) */
+.stChatMessage.assistant {
+    background-color: #ffffff;
+    border: 1px solid #e5e5e5;
+}
+
+/* Hide the Streamlit footer and menu */
+#MainMenu, footer, header {
+    visibility: hidden;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.title("💬 Neha – Your Hinglish Chatbot")
 
 if "memory" not in st.session_state:
@@ -227,3 +279,4 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
