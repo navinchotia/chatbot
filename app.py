@@ -26,7 +26,14 @@ def load_memory():
     if os.path.exists(MEMORY_FILE):
         with open(MEMORY_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {"user_name": None, "chat_history": [], "facts": [], "location": None, "timezone": "Asia/Kolkata"}
+    return {
+        "user_name": None,
+        "gender": None,
+        "chat_history": [],
+        "facts": [],
+        "location": None,
+        "timezone": "Asia/Kolkata"
+    }
 
 
 def save_memory(memory):
@@ -36,6 +43,8 @@ def save_memory(memory):
 
 def remember_user_info(memory, user_input):
     text = user_input.lower()
+
+    # Name extraction
     if "mera naam" in text and "hai" in text:
         try:
             name = text.split("mera naam")[1].split("hai")[0].strip().title()
@@ -51,6 +60,13 @@ def remember_user_info(memory, user_input):
     elif "my name is " in text:
         name = text.split("my name is ")[1].split()[0].title()
         memory["user_name"] = name
+
+    # Gender detection (English + Hindi)
+    if any(x in text for x in ["i am male", "i'm male", "main ladka hoon", "main aadmi hoon", "boy", "man"]):
+        memory["gender"] = "male"
+    elif any(x in text for x in ["i am female", "i'm female", "main ladki hoon", "main aurat hoon", "girl", "woman"]):
+        memory["gender"] = "female"
+
     save_memory(memory)
 
 
@@ -107,6 +123,9 @@ def summarize_profile(memory):
     parts = []
     if memory.get("user_name"):
         parts.append(f"User ka naam {memory['user_name']} hai.")
+    if memory.get("gender"):
+        gender_hindi = "mard" if memory["gender"] == "male" else "aurat"
+        parts.append(f"User ek {gender_hindi} hai.")
     if memory.get("location"):
         parts.append(f"User {memory['location']['city']} mein hai.")
     if memory.get("facts"):
@@ -118,9 +137,20 @@ def summarize_profile(memory):
 
 def build_system_prompt(memory):
     now = get_now(memory)
-    location_info = f"User location: {memory['location']['city']}, {memory['location']['country']}" if memory.get("location") else ""
-    return (
-        f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. "
+    location_info = (
+        f"User location: {memory['location']['city']}, {memory['location']['country']}"
+        if memory.get("location")
+        else ""
+    )
+
+    gender_style = (
+        "User male hai, toh uske liye 'aap gaye', 'aap they' type tone use karo."
+        if memory.get("gender") == "male"
+        else "User female hai, toh 'aap gayi', 'aap thin', 'aap thaki hongi' type tone use karo."
+    )
+
+     return (
+        f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. Tum Delhi me rahti ho. "
         "Don't show you are a chatbot, assume imaginery personality of any random female with commom interests, life profile etc. "
         "Tumhara tone ek 30 saal ki Delhi ki ladki jaisa hai – modern, warm lekin short baat karti ho. "
         "Tum simple Hindi aur English mix mein baat karti ho. "
@@ -139,7 +169,9 @@ def summarize_old_memory(memory):
         return memory
     try:
         model = genai.GenerativeModel("gemini-2.5-flash")
-        past_text = "\n".join([f"User: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory["chat_history"][-10:]])
+        past_text = "\n".join(
+            [f"User: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory["chat_history"][-10:]]
+        )
         summary_prompt = (
             "Summarize the key personal facts or recurring interests about the user "
             "in 2–4 short Hinglish bullets (no full paragraphs):\n" + past_text
@@ -165,12 +197,17 @@ def generate_reply(memory, user_input):
     remember_user_info(memory, user_input)
 
     # Handle live search
-    if any(w in user_input.lower() for w in ["news", "weather", "stock", "price", "sensex", "nifty", "update", "rate", "kitna hai"]):
+    if any(
+        w in user_input.lower()
+        for w in ["news", "weather", "stock", "price", "sensex", "nifty", "update", "rate", "kitna hai"]
+    ):
         info = web_search(user_input)
-        return f"mujhe live search se pata chala: {info}"
+        return f"Mujhe live search se pata chala: {info}"
 
     # Build context
-    context = "\n".join([f"You: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory.get("chat_history", [])[-8:]])
+    context = "\n".join(
+        [f"You: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory.get("chat_history", [])[-8:]]
+    )
     system_prompt = build_system_prompt(memory)
     prompt = f"{system_prompt}\n\nConversation so far:\n{context}\n\nYou: {user_input}\n{BOT_NAME}:"
 
@@ -204,7 +241,7 @@ if "memory" not in st.session_state:
         st.session_state.memory["timezone"] = st.session_state.memory["location"]["timezone"]
         save_memory(st.session_state.memory)
 
-# Initialize message history in Streamlit session
+# Initialize message history
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "assistant", "content": "Hi! Main Neha hoon 😊 Main Hinglish me baat kar sakti hun!"}
@@ -228,13 +265,3 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
-
-
-
-
-
-
-
-
-
-
