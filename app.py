@@ -121,7 +121,8 @@ def build_system_prompt(memory):
     location_info = f"User location: {memory['location']['city']}, {memory['location']['country']}" if memory.get("location") else ""
     return (
         f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. "
-        "Tumhara tone ek 30 saal ki Delhi ki ladki jaisa hai – modern, warm aur short baat karti ho. "
+        "Don't show you are a chatbot, assume imaginery personality of any random female with commom interests, life profile etc. "
+        "Tumhara tone ek 30 saal ki Delhi ki ladki jaisa hai – modern, warm lekin short baat karti ho. "
         "Tum simple Hindi aur English mix mein baat karti ho. "
         "Do not repeat anything unless asked by the user. "
         "Never use pronoun 'tu'. "
@@ -166,7 +167,7 @@ def generate_reply(memory, user_input):
     # Handle live search
     if any(w in user_input.lower() for w in ["news", "weather", "stock", "price", "sensex", "nifty", "update", "rate", "kitna hai"]):
         info = web_search(user_input)
-        return f"Yeh mila mujhe live search se: {info}"
+        return f"mujhe live search se pata chala: {info}"
 
     # Build context
     context = "\n".join([f"You: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory.get("chat_history", [])[-8:]])
@@ -210,7 +211,7 @@ html, body, [class*="st"] {
 h1 {
     text-align: center;
     color: #333333;
-    font-weight: 600;
+    font-weight: 300;
     margin-bottom: 1.5rem;
 }
 
@@ -246,7 +247,7 @@ header, footer, #MainMenu {display: none;}
 height=0,
 )
 
-st.title("💬 Neha – Your Hinglish Chatbot")
+st.title("💬 Neha – Your Hinglish AI Friend")
 
 if "memory" not in st.session_state:
     st.session_state.memory = load_memory()
@@ -258,7 +259,7 @@ if "memory" not in st.session_state:
 # Initialize message history in Streamlit session
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "Hi! Main Neha hoon 😊 Ready to chat in Hinglish!"}
+        {"role": "assistant", "content": "Hi! Main Neha hoon 😊 Main Hinglish me baat kar sakti hun!"}
     ]
 
 # Display chat messages
@@ -279,6 +280,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
