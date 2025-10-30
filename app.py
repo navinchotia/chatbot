@@ -194,52 +194,63 @@ def generate_reply(memory, user_input):
 # STREAMLIT UI (Duplicate-Free)
 # -----------------------------
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
+# Add this just after st.set_page_config(...)
 st.markdown("""
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
 <style>
-/* Overall page */
-main {
-    background-color: #f8f9fa;
-    padding: 1.5rem;
+/* Apply font globally */
+html, body, [class*="css"] {
     font-family: 'Poppins', sans-serif;
 }
 
-/* Title */
+/* Page background */
+section.main {
+    background-color: #f7f8fa;
+    padding: 2rem 3rem;
+}
+
+/* Title style */
 h1 {
-    font-family: 'Poppins', sans-serif;
-    font-weight: 400;
-    color: #555;
     text-align: center;
+    color: #333333;
+    font-weight: 600;
+    margin-bottom: 1.2rem;
+}
+
+/* Chat container (for st.chat_message layout) */
+[data-testid="stChatMessage"] {
+    border-radius: 18px;
+    padding: 10px 15px;
+    margin: 8px 0;
+    width: fit-content;
+    max-width: 85%;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+/* User messages (align right, blue bubble) */
+[data-testid="stChatMessage"][data-testid="stChatMessageUser"] {
+    background-color: #DCF8C6;
+    margin-left: auto;
+}
+
+/* Assistant (Neha) messages (align left, white bubble) */
+[data-testid="stChatMessage"][data-testid="stChatMessageAssistant"] {
+    background-color: #ffffff;
+    border: 1px solid #e5e5e5;
+    margin-right: auto;
 }
 
 /* Chat input box */
 [data-testid="stChatInput"] textarea {
-    border-radius: 12px;
-    font-size: 16px;
-    padding: 10px;
-    border: 1px solid #ccc;
+    border-radius: 12px !important;
+    font-size: 16px !important;
+    padding: 10px !important;
+    border: 1px solid #ccc !important;
 }
 
-/* Chat bubbles */
-.stChatMessage {
-    border-radius: 18px;
-    padding: 10px 15px;
-    margin: 6px 0;
-    max-width: 80%;
-}
-
-/* User bubble (right side) */
-.stChatMessage.user {
-    background-color: #DCF8C6;
-    align-self: flex-end;
-}
-
-/* Neha (bot) bubble (left side) */
-.stChatMessage.assistant {
-    background-color: #ffffff;
-    border: 1px solid #e5e5e5;
-}
-
-/* Hide the Streamlit footer and menu */
+/* Hide Streamlit header/footer/menu */
 #MainMenu, footer, header {
     visibility: hidden;
 }
@@ -279,6 +290,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
