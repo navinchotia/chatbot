@@ -195,59 +195,6 @@ def generate_reply(memory, user_input):
 # STREAMLIT UI (Duplicate-Free)
 # -----------------------------
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
-# Add this just after st.set_page_config(...)
-st.cache_data.clear()
-# Inject custom CSS globally
-st.markdown("""
-    <style>
-    /* Use a clean rounded look */
-    html, body, [data-testid="stAppViewContainer"] {
-        font-family: 'Poppins', sans-serif !important;
-        background-color: #f9fafb !important;
-    }
-
-    h1 {
-        text-align: center;
-        color: #333333;
-        font-weight: 200;
-        margin-bottom: 1.5rem;
-        font-family: 'Poppins', sans-serif !important;
-    }
-
-    /* Chat section spacing */
-    .stMarkdown {
-        margin: 0.2rem 0 !important;
-    }
-
-    /* Chat bubbles */
-    div[data-testid="stMarkdownContainer"] p {
-        border-radius: 18px;
-        padding: 10px 14px;
-        display: inline-block;
-        max-width: 80%;
-        font-size: 16px;
-        line-height: 1.5;
-    }
-
-    /* User (right bubble) */
-    div:has(> p:has(strong:contains("You:"))) p {
-        background-color: #DCF8C6 !important;
-        margin-left: auto !important;
-        color: #111 !important;
-    }
-
-    /* Neha (left bubble) */
-    div:has(> p:has(strong:contains("Neha:"))) p {
-        background-color: #fff !important;
-        border: 1px solid #eaeaea;
-        color: #222;
-    }
-
-    /* Hide Streamlit default header/footer */
-    header, footer, #MainMenu {display: none;}
-    </style>
-""", unsafe_allow_html=True)
-
 st.title("💬 Neha – Your Hinglish AI Friend")
 
 if "memory" not in st.session_state:
@@ -281,6 +228,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
