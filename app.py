@@ -196,67 +196,55 @@ def generate_reply(memory, user_input):
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
 # Add this just after st.set_page_config(...)
 st.cache_data.clear()
-st.markdown("""
+import streamlit.components.v1 as components
+
+components.html("""
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
 <style>
-/* Apply font globally */
-html, body, [class*="css"] {
-    font-family: 'Poppins', sans-serif;
-}
-
-/* Page background */
-section.main {
+html, body, [class*="st"] {
+    font-family: 'Poppins', sans-serif !important;
     background-color: #f7f8fa;
-    padding: 2rem 3rem;
 }
 
-/* Title style */
+/* Center title */
 h1 {
     text-align: center;
     color: #333333;
     font-weight: 600;
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.5rem;
 }
 
-/* Chat container (for st.chat_message layout) */
-[data-testid="stChatMessage"] {
-    border-radius: 18px;
-    padding: 10px 15px;
-    margin: 8px 0;
-    width: fit-content;
-    max-width: 85%;
+/* Chat messages */
+div[data-testid="stChatMessageContent"] {
     font-size: 16px;
     line-height: 1.5;
+    border-radius: 16px;
+    padding: 10px 14px;
+    margin: 6px 0;
+    max-width: 80%;
 }
 
-/* User messages (align right, blue bubble) */
-[data-testid="stChatMessage"][data-testid="stChatMessageUser"] {
+/* User bubble (right-aligned) */
+div[data-testid="stChatMessageContent"] p {
     background-color: #DCF8C6;
-    margin-left: auto;
+    border-radius: 16px;
+    padding: 8px 12px;
 }
 
-/* Assistant (Neha) messages (align left, white bubble) */
-[data-testid="stChatMessage"][data-testid="stChatMessageAssistant"] {
-    background-color: #ffffff;
-    border: 1px solid #e5e5e5;
-    margin-right: auto;
+/* Assistant bubble (left-aligned) */
+div[data-testid="stChatMessage"] div[role="paragraph"]:not(:has(strong)) {
+    background-color: #fff;
+    border: 1px solid #eaeaea;
+    border-radius: 16px;
+    padding: 8px 12px;
 }
 
-/* Chat input box */
-[data-testid="stChatInput"] textarea {
-    border-radius: 12px !important;
-    font-size: 16px !important;
-    padding: 10px !important;
-    border: 1px solid #ccc !important;
-}
-
-/* Hide Streamlit header/footer/menu */
-#MainMenu, footer, header {
-    visibility: hidden;
-}
+/* Hide Streamlit default header/footer */
+header, footer, #MainMenu {display: none;}
 </style>
-""", unsafe_allow_html=True)
+""",
+height=0,
+)
 
 st.title("💬 Neha – Your Hinglish Chatbot")
 
@@ -291,6 +279,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
