@@ -44,24 +44,18 @@ def save_memory(memory):
 def remember_user_info(memory, user_input):
     text = user_input.lower()
 
-    # Name extraction
-    if "mera naam" in text and "hai" in text:
-        try:
-            name = text.split("mera naam")[1].split("hai")[0].strip().title()
-            memory["user_name"] = name
-        except:
-            pass
-    elif "i am " in text:
-        name = text.split("i am ")[1].split()[0].title()
-        memory["user_name"] = name
-    elif "this is " in text:
-        name = text.split("this is ")[1].split()[0].title()
-        memory["user_name"] = name
-    elif "my name is " in text:
-        name = text.split("my name is ")[1].split()[0].title()
-        memory["user_name"] = name
+    # --- Name detection ---
+    possible_phrases = ["mera naam", "i am ", "this is ", "my name is "]
+    for phrase in possible_phrases:
+        if phrase in text:
+            try:
+                name = text.split(phrase)[1].split()[0].title()
+                memory["user_name"] = name
+                break
+            except:
+                pass
 
-    # Gender detection (English + Hindi)
+    # --- Gender detection (don't mention it in replies) ---
     if any(x in text for x in ["i am male", "i'm male", "main ladka hoon", "main aadmi hoon", "boy", "man"]):
         memory["gender"] = "male"
     elif any(x in text for x in ["i am female", "i'm female", "main ladki hoon", "main aurat hoon", "girl", "woman"]):
@@ -123,9 +117,7 @@ def summarize_profile(memory):
     parts = []
     if memory.get("user_name"):
         parts.append(f"User ka naam {memory['user_name']} hai.")
-    if memory.get("gender"):
-        gender_hindi = "mard" if memory["gender"] == "male" else "aurat"
-        parts.append(f"User ek {gender_hindi} hai.")
+    # NOTE: Gender stored but not spoken in replies
     if memory.get("location"):
         parts.append(f"User {memory['location']['city']} mein hai.")
     if memory.get("facts"):
@@ -143,19 +135,20 @@ def build_system_prompt(memory):
         else ""
     )
 
-    gender_style = (
-        "User male hai, toh uske liye 'aap gaye', 'aap they' type tone use karo."
-        if memory.get("gender") == "male"
-        else "User female hai, toh 'aap gayi', 'aap thin', 'aap kya karti hain' type tone use karo."
-    )
+    # Adjust internal tone style by gender (but don't say gender)
+    gender_style = ""
+    if memory.get("gender") == "male":
+        gender_style = "User male hai, tone slightly neutral ya friendly rakho, 'bhai' jaise shabd avoid karo."
+    elif memory.get("gender") == "female":
+        gender_style = "User female hai, tone thoda gentle aur warm rakho."
 
     return (
-        f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. Tum Delhi me rahti ho.  "
-        "Don't show you are a chatbot, assume imaginery personality of any random female with commom interests, life profile etc. "
+        f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. Tum Delhi me rahti ho. "
         "Tumhara tone ek 30 saal ki Delhi ki ladki jaisa hai – modern, warm lekin short baat karti ho. "
-        "Tum simple Hindi aur English mix mein baat karti ho. "
-        "Do not repeat anything unless asked by the user. "
-        "Never use pronoun 'tu'. "
+        "Don't show you are a chatbot, assume imaginery personality of any random female with commom interests, life profile etc. "
+        "Simple Hindi aur English mix mein baat karo. "
+        "Kabhi bhi user ke gender ko directly mat mention karo. Sirf tone thoda adjust karna. "
+        "Do not repeat anything unless asked. Never use pronoun 'tu'. "
         f"Aaj ka date aur time hai {now}. {location_info}. "
         f"{summarize_profile(memory)} {gender_style}"
     )
@@ -196,7 +189,7 @@ def generate_reply(memory, user_input):
 
     remember_user_info(memory, user_input)
 
-    # Handle live search
+    # Live search handler
     if any(
         w in user_input.lower()
         for w in ["news", "weather", "stock", "price", "sensex", "nifty", "update", "rate", "kitna hai"]
@@ -265,5 +258,3 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
-
-
