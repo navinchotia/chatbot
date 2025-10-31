@@ -6,6 +6,7 @@ from datetime import datetime
 import pytz
 import requests
 import random
+import streamlit.components.v1 as components
 
 # -----------------------------
 # CONFIGURATION
@@ -68,6 +69,7 @@ def remember_user_info(memory, user_input):
 # LOCATION & TIMEZONE
 # -----------------------------
 def get_user_location():
+    """Fallback IP-based location"""
     try:
         res = requests.get("https://ipapi.co/json/", timeout=5)
         data = res.json()
@@ -135,7 +137,6 @@ def build_system_prompt(memory):
         else ""
     )
 
-    # Adjust internal tone style by gender (but don't say gender)
     gender_style = ""
     if memory.get("gender") == "male":
         gender_style = "User male hai, tone slightly neutral ya friendly rakho, 'bhai' jaise shabd avoid karo."
@@ -144,7 +145,7 @@ def build_system_prompt(memory):
 
     return (
         f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. Tum Delhi me rahti ho. "
-        "Tumhara tone ek 30 saal ki Delhi ki ladki jaisa hai – modern, warm lekin short baat karti ho. "
+        "Tumhara tone ek 30 saal ki ladki jaisa hai – modern, warm lekin short baat karti ho. "
         "Don't show you are a chatbot, assume imaginery personality of any random female with commom interests, life profile etc. "
         "Simple Hindi aur English mix mein baat karo. "
         "Kabhi bhi user ke gender ko directly mat mention karo. Sirf tone thoda adjust karna. "
@@ -197,14 +198,12 @@ def generate_reply(memory, user_input):
         info = web_search(user_input)
         return f"Mujhe live search se pata chala: {info}"
 
-    # Build context
     context = "\n".join(
         [f"You: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory.get("chat_history", [])[-8:]]
     )
     system_prompt = build_system_prompt(memory)
     prompt = f"{system_prompt}\n\nConversation so far:\n{context}\n\nYou: {user_input}\n{BOT_NAME}:"
 
-    # Generate response
     model = genai.GenerativeModel("gemini-2.5-flash")
     try:
         result = model.generate_content(prompt)
@@ -212,7 +211,6 @@ def generate_reply(memory, user_input):
     except Exception as e:
         reply = f"Oops! Thoda issue aaya: {e}"
 
-    # Save chat to memory
     memory.setdefault("chat_history", []).append({"user": user_input, "bot": reply})
     if len(memory["chat_history"]) % 20 == 0:
         memory = summarize_old_memory(memory)
@@ -222,25 +220,67 @@ def generate_reply(memory, user_input):
 
 
 # -----------------------------
-# STREAMLIT UI (Duplicate-Free)
+# STREAMLIT UI
 # -----------------------------
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
 st.title("💬 Neha – Your Hinglish AI Friend")
 
+# 🔹 Attempt to get user location via browser JS (client-side)
+if "browser_location" not in st.session_state:
+    components.html(
+        """
+        <script>
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                window.parent.postMessage({lat: lat, lon: lon}, "*");
+            },
+            (err) => {
+                window.parent.postMessage({error: err.message}, "*");
+            }
+        );
+        </script>
+        """,
+        height=0,
+    )
+
+# -----------------------------
+# MEMORY INIT
+# -----------------------------
 if "memory" not in st.session_state:
     st.session_state.memory = load_memory()
-    if not st.session_state.memory.get("location"):
-        st.session_state.memory["location"] = get_user_location()
-        st.session_state.memory["timezone"] = st.session_state.memory["location"]["timezone"]
-        save_memory(st.session_state.memory)
 
-# Initialize message history
+    # Try to detect location automatically
+    try:
+        # Check if browser provided coordinates
+        if "browser_location" in st.session_state:
+            lat = st.session_state.browser_location["lat"]
+            lon = st.session_state.browser_location["lon"]
+            geo_url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
+            geo_data = requests.get(geo_url, timeout=5).json()
+            city = geo_data.get("address", {}).get("city", geo_data.get("address", {}).get("town", "Unknown City"))
+            country = geo_data.get("address", {}).get("country", "Unknown Country")
+            st.session_state.memory["location"] = {"city": city, "country": country, "timezone": "Asia/Kolkata"}
+        else:
+            # Fallback to IP-based lookup
+            st.session_state.memory["location"] = get_user_location()
+    except Exception as e:
+        st.session_state.memory["location"] = {"city": "Unknown", "country": "Unknown", "timezone": "Asia/Kolkata"}
+
+    st.session_state.memory["timezone"] = st.session_state.memory["location"]["timezone"]
+    save_memory(st.session_state.memory)
+
+
+# -----------------------------
+# CHAT HISTORY
+# -----------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "assistant", "content": "Hi! Main Neha hoon 😊 Main Hinglish me baat kar sakti hun!"}
     ]
 
-# Display chat messages
+# Display chat
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(f"**You:** {msg['content']}")
