@@ -6,6 +6,7 @@ from datetime import datetime
 import pytz
 import requests
 import random
+import streamlit.components.v1 as components
 
 # -----------------------------
 # CONFIGURATION
@@ -239,6 +240,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
