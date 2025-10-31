@@ -6,22 +6,19 @@ from datetime import datetime
 import pytz
 import requests
 import random
-import streamlit.components.v1 as components
 
 # -----------------------------
 # CONFIGURATION
 # -----------------------------
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "YOUR_GEMINI_API_KEY"
 SERPER_API_KEY = os.getenv("SERPER_API_KEY") or "YOUR_SERPER_API_KEY"
-
 genai.configure(api_key=GEMINI_API_KEY)
 
 BOT_NAME = "Neha"
 MEMORY_FILE = "user_memory.json"
 
-
 # -----------------------------
-# MEMORY
+# MEMORY FUNCTIONS
 # -----------------------------
 def load_memory():
     if os.path.exists(MEMORY_FILE):
@@ -36,18 +33,13 @@ def load_memory():
         "timezone": "Asia/Kolkata"
     }
 
-
 def save_memory(memory):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
         json.dump(memory, f, ensure_ascii=False, indent=2)
 
-
 def remember_user_info(memory, user_input):
     text = user_input.lower()
-
-    # --- Name detection ---
-    possible_phrases = ["mera naam", "i am ", "this is ", "my name is "]
-    for phrase in possible_phrases:
+    for phrase in ["mera naam", "i am ", "this is ", "my name is "]:
         if phrase in text:
             try:
                 name = text.split(phrase)[1].split()[0].title()
@@ -55,20 +47,16 @@ def remember_user_info(memory, user_input):
                 break
             except:
                 pass
-
-    # --- Gender detection (don't mention it in replies) ---
-    if any(x in text for x in ["i am male", "i'm male", "main ladka hoon", "main aadmi hoon", "boy", "man"]):
+    if any(x in text for x in ["i am male", "main ladka hoon", "boy", "man"]):
         memory["gender"] = "male"
-    elif any(x in text for x in ["i am female", "i'm female", "main ladki hoon", "main aurat hoon", "girl", "woman"]):
+    elif any(x in text for x in ["i am female", "main ladki hoon", "girl", "woman"]):
         memory["gender"] = "female"
-
     save_memory(memory)
 
-
 # -----------------------------
-# LOCATION & TIMEZONE
+# LOCATION DETECTION
 # -----------------------------
-def get_user_location():
+def get_ip_location():
     """Fallback IP-based location"""
     try:
         res = requests.get("https://ipapi.co/json/", timeout=5)
@@ -80,6 +68,18 @@ def get_user_location():
     except Exception:
         return {"city": "Unknown", "country": "Unknown", "timezone": "Asia/Kolkata"}
 
+def reverse_geocode(lat, lon):
+    """Convert lat/lon to readable city"""
+    try:
+        url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
+        r = requests.get(url, headers={"User-Agent": "NehaChatbot/1.0"}, timeout=6)
+        data = r.json()
+        addr = data.get("address", {})
+        city = addr.get("city") or addr.get("town") or addr.get("village") or "Unknown City"
+        country = addr.get("country", "Unknown Country")
+        return {"city": city, "country": country, "timezone": "Asia/Kolkata"}
+    except:
+        return get_ip_location()
 
 def get_now(memory):
     tz_name = memory.get("timezone", "Asia/Kolkata")
@@ -87,12 +87,10 @@ def get_now(memory):
         tz = pytz.timezone(tz_name)
     except Exception:
         tz = pytz.timezone("Asia/Kolkata")
-    now = datetime.now(tz)
-    return now.strftime("%A, %d %B %Y %I:%M %p")
-
+    return datetime.now(tz).strftime("%A, %d %B %Y %I:%M %p")
 
 # -----------------------------
-# WEB SEARCH (via Serper)
+# WEB SEARCH
 # -----------------------------
 def web_search(query):
     if not SERPER_API_KEY:
@@ -101,7 +99,6 @@ def web_search(query):
         headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
         data = {"q": query}
         r = requests.post("https://google.serper.dev/search", headers=headers, json=data, timeout=12)
-        r.raise_for_status()
         results = r.json()
         if "knowledge" in results and results["knowledge"].get("description"):
             return results["knowledge"]["description"]
@@ -111,23 +108,18 @@ def web_search(query):
     except Exception as e:
         return f"Search failed: {e}"
 
-
 # -----------------------------
-# SYSTEM PROMPT
+# PROMPTS
 # -----------------------------
 def summarize_profile(memory):
     parts = []
     if memory.get("user_name"):
         parts.append(f"User ka naam {memory['user_name']} hai.")
-    # NOTE: Gender stored but not spoken in replies
     if memory.get("location"):
         parts.append(f"User {memory['location']['city']} mein hai.")
     if memory.get("facts"):
         parts.append("Recent info: " + "; ".join(memory["facts"][-3:]))
-    if not parts:
-        return "User ke baare mein abhi zyada info nahi hai."
-    return " ".join(parts)
-
+    return " ".join(parts) or "User ke baare mein abhi zyada info nahi hai."
 
 def build_system_prompt(memory):
     now = get_now(memory)
@@ -136,24 +128,22 @@ def build_system_prompt(memory):
         if memory.get("location")
         else ""
     )
-
     gender_style = ""
     if memory.get("gender") == "male":
-        gender_style = "User male hai, tone slightly neutral ya friendly rakho, 'bhai' jaise shabd avoid karo."
+        gender_style = "User male hai, tone slightly neutral rakho."
     elif memory.get("gender") == "female":
-        gender_style = "User female hai, tone thoda gentle aur warm rakho."
-
+        gender_style = "User female hai, tone thoda formal and warm rakho."
     return (
-        f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. Tum Delhi me rahti ho. "
+        f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. "
         "Tumhara tone ek 30 saal ki ladki jaisa hai – modern, warm lekin short baat karti ho. "
+        "Tum Delhi me rahti ho. "
         "Don't show you are a chatbot, assume imaginery personality of any random female with commom interests, life profile etc. "
         "Simple Hindi aur English mix mein baat karo. "
-        "Kabhi bhi user ke gender ko directly mat mention karo. Sirf tone thoda adjust karna. "
+        "Kabhi bhi user ke gender ko directly mat mention karo. "
         "Do not repeat anything unless asked. Never use pronoun 'tu'. "
         f"Aaj ka date aur time hai {now}. {location_info}. "
         f"{summarize_profile(memory)} {gender_style}"
     )
-
 
 # -----------------------------
 # MEMORY SUMMARIZATION
@@ -166,13 +156,11 @@ def summarize_old_memory(memory):
         past_text = "\n".join(
             [f"User: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory["chat_history"][-10:]]
         )
-        summary_prompt = (
-            "Summarize the key personal facts or recurring interests about the user "
-            "in 2–4 short Hinglish bullets (no full paragraphs):\n" + past_text
+        result = model.generate_content(
+            "Summarize key user facts in 3 short Hinglish bullets:\n" + past_text
         )
-        result = model.generate_content(summary_prompt)
         summary = (result.text or "").strip()
-        if summary and summary not in memory.get("facts", []):
+        if summary:
             memory.setdefault("facts", []).append(summary)
             memory["chat_history"] = memory["chat_history"][-8:]
             save_memory(memory)
@@ -180,44 +168,31 @@ def summarize_old_memory(memory):
         print(f"[Memory summarization error: {e}]")
     return memory
 
-
 # -----------------------------
-# MAIN REPLY FUNCTION
+# GENERATE REPLY
 # -----------------------------
 def generate_reply(memory, user_input):
     if not user_input.strip():
         return "Kuch toh bolo! 😄"
-
     remember_user_info(memory, user_input)
-
-    # Live search handler
-    if any(
-        w in user_input.lower()
-        for w in ["news", "weather", "stock", "price", "sensex", "nifty", "update", "rate", "kitna hai"]
-    ):
+    if any(w in user_input.lower() for w in ["news", "weather", "price", "rate", "update"]):
         info = web_search(user_input)
         return f"Mujhe live search se pata chala: {info}"
-
     context = "\n".join(
         [f"You: {c['user']}\n{BOT_NAME}: {c['bot']}" for c in memory.get("chat_history", [])[-8:]]
     )
-    system_prompt = build_system_prompt(memory)
-    prompt = f"{system_prompt}\n\nConversation so far:\n{context}\n\nYou: {user_input}\n{BOT_NAME}:"
-
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    prompt = f"{build_system_prompt(memory)}\n\nConversation:\n{context}\n\nYou: {user_input}\n{BOT_NAME}:"
     try:
+        model = genai.GenerativeModel("gemini-2.5-flash")
         result = model.generate_content(prompt)
-        reply = (result.text or "").strip()
+        reply = result.text.strip()
     except Exception as e:
         reply = f"Oops! Thoda issue aaya: {e}"
-
     memory.setdefault("chat_history", []).append({"user": user_input, "bot": reply})
     if len(memory["chat_history"]) % 20 == 0:
-        memory = summarize_old_memory(memory)
-
+        summarize_old_memory(memory)
     save_memory(memory)
     return reply
-
 
 # -----------------------------
 # STREAMLIT UI
@@ -225,70 +200,54 @@ def generate_reply(memory, user_input):
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
 st.title("💬 Neha – Your Hinglish AI Friend")
 
-# 🔹 Attempt to get user location via browser JS (client-side)
-if "browser_location" not in st.session_state:
-    components.html(
-        """
-        <script>
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                window.parent.postMessage({lat: lat, lon: lon}, "*");
-            },
-            (err) => {
-                window.parent.postMessage({error: err.message}, "*");
-            }
-        );
-        </script>
-        """,
-        height=0,
-    )
+# --- Location capture via browser ---
+browser_location = st.experimental_get_query_params()
+if "lat" in browser_location and "lon" in browser_location:
+    lat = float(browser_location["lat"][0])
+    lon = float(browser_location["lon"][0])
+    browser_geo = reverse_geocode(lat, lon)
+else:
+    browser_geo = get_ip_location()
 
-# -----------------------------
-# MEMORY INIT
-# -----------------------------
+# --- Memory initialization ---
 if "memory" not in st.session_state:
     st.session_state.memory = load_memory()
-
-    # Try to detect location automatically
-    try:
-        # Check if browser provided coordinates
-        if "browser_location" in st.session_state:
-            lat = st.session_state.browser_location["lat"]
-            lon = st.session_state.browser_location["lon"]
-            geo_url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
-            geo_data = requests.get(geo_url, timeout=5).json()
-            city = geo_data.get("address", {}).get("city", geo_data.get("address", {}).get("town", "Unknown City"))
-            country = geo_data.get("address", {}).get("country", "Unknown Country")
-            st.session_state.memory["location"] = {"city": city, "country": country, "timezone": "Asia/Kolkata"}
-        else:
-            # Fallback to IP-based lookup
-            st.session_state.memory["location"] = get_user_location()
-    except Exception as e:
-        st.session_state.memory["location"] = {"city": "Unknown", "country": "Unknown", "timezone": "Asia/Kolkata"}
-
-    st.session_state.memory["timezone"] = st.session_state.memory["location"]["timezone"]
+    st.session_state.memory["location"] = browser_geo
+    st.session_state.memory["timezone"] = browser_geo["timezone"]
     save_memory(st.session_state.memory)
 
+# --- Inject browser JS for location ---
+st.components.v1.html(
+    """
+    <script>
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const search = new URLSearchParams(window.location.search);
+            if (!search.has("lat")) {
+                search.set("lat", lat);
+                search.set("lon", lon);
+                window.location.search = search.toString();
+            }
+        },
+        (err) => console.log("Location denied:", err)
+    );
+    </script>
+    """,
+    height=0,
+)
 
-# -----------------------------
-# CHAT HISTORY
-# -----------------------------
+# --- Chat Display ---
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "assistant", "content": "Hi! Main Neha hoon 😊 Main Hinglish me baat kar sakti hun!"}
     ]
 
-# Display chat
 for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(f"**You:** {msg['content']}")
-    else:
-        st.markdown(f"**Neha:** {msg['content']}")
+    st.markdown(f"**{'You' if msg['role']=='user' else 'Neha'}:** {msg['content']}")
     st.markdown("---")
 
-# Chat input
 user_input = st.chat_input("Type your message here...")
 
 if user_input:
