@@ -166,6 +166,40 @@ def generate_reply(memory, user_input):
 # -----------------------------
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
 st.title("💬 Neha – Your Hinglish AI Friend")
+# --- WhatsApp Style CSS ---
+chat_css = """
+<style>
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+}
+.chat-bubble {
+    padding: 10px 14px;
+    margin: 5px;
+    border-radius: 15px;
+    max-width: 75%;
+    font-size: 16px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+.user {
+    background-color: #dcf8c6;
+    align-self: flex-end;
+    text-align: right;
+}
+.bot {
+    background-color: #ffffff;
+    align-self: flex-start;
+    text-align: left;
+}
+body {
+    background-color: #e5ddd5;
+    font-family: "Segoe UI", sans-serif;
+}
+</style>
+"""
+st.markdown(chat_css, unsafe_allow_html=True)
 
 # --- Memory initialization ---
 if "memory" not in st.session_state:
@@ -190,3 +224,4 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
