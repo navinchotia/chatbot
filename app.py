@@ -58,17 +58,19 @@ def remember_user_info(memory, user_input):
 # LOCATION DETECTION
 # -----------------------------
 def get_ip_location():
-    """Fallback IP-based location"""
+    """Get user location by IP with better accuracy"""
     try:
-        res = requests.get("https://ipapi.co/json/", timeout=5)
+        res = requests.get("https://ipwho.is/", timeout=5)
         data = res.json()
-        city = data.get("city", "Unknown City")
-        country = data.get("country_name", "Unknown Country")
-        tz = data.get("timezone", "Asia/Kolkata")
-        return {"city": city, "country": country, "timezone": tz}
+        if data.get("success"):
+            city = data.get("city", "Unknown City")
+            country = data.get("country", "Unknown Country")
+            tz = data.get("timezone", {}).get("id", "Asia/Kolkata")
+            return {"city": city, "country": country, "timezone": tz}
+        else:
+            return {"city": "Unknown", "country": "Unknown", "timezone": "Asia/Kolkata"}
     except Exception:
         return {"city": "Unknown", "country": "Unknown", "timezone": "Asia/Kolkata"}
-
 def reverse_geocode(lat, lon):
     """Convert lat/lon to readable city"""
     try:
@@ -256,3 +258,4 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
