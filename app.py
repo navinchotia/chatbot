@@ -166,41 +166,19 @@ def generate_reply(memory, user_input):
 # STREAMLIT UI
 # -----------------------------
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
-st.title("💬 Neha – Your Hinglish AI Friend")
-# --- WhatsApp Style CSS ---
-chat_css = """
+
+# Inject some global page style (won't affect components.html iframe content,
+# but keeps the page consistent)
+st.markdown("""
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-.chat-container {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 10px;
-}
-.chat-bubble {
-    padding: 10px 14px;
-    margin: 5px;
-    border-radius: 15px;
-    max-width: 75%;
-    font-size: 16px;
-    line-height: 1.4;
-    word-wrap: break-word;
-}
-.user {
-    background-color: #dcf8c6;
-    align-self: flex-end;
-    text-align: right;
-}
-.bot {
-    background-color: #ffffff;
-    align-self: flex-start;
-    text-align: left;
-}
-body {
-    background-color: #e5ddd5;
-    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif !important;
-}
+  .stApp { font-family: 'Roboto', sans-serif !important; }
+  /* page-level background like WhatsApp */
+  .stApp { background-color: #e5ddd5; }
 </style>
-"""
-st.markdown(chat_css, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
+
+st.title("💬 Neha – Your Hinglish AI Friend")
 
 # --- Memory initialization ---
 if "memory" not in st.session_state:
@@ -212,25 +190,72 @@ if "messages" not in st.session_state:
         {"role": "assistant", "content": "Hi! Main Neha hoon 😊 Main Hinglish me baat kar sakti hun!"}
     ]
 
+# For every message we render a small HTML component. Important: include font + CSS inside the component HTML
 for msg in st.session_state.messages:
     role = "user" if msg["role"] == "user" else "bot"
     name = "You" if role == "user" else "Neha"
 
-    # Dynamically calculate height based on message length
+    # dynamic height
     msg_length = len(msg["content"])
-    height = min(300, max(80, msg_length // 2))  # between 80–300px
+    height = min(300, max(90, 60 + msg_length // 2))
 
+    # NOTE: Google Fonts link + inline CSS are included inside the component HTML so the iframe uses the font.
     bubble_html = f"""
-    <div class="chat-container">
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+      <style>
+        html, body {{
+          margin: 0;
+          padding: 0;
+          background: transparent;
+          font-family: 'Roboto', 'Segoe UI', 'Helvetica Neue', sans-serif !important;
+        }}
+        .chat-container {{
+          display: flex;
+          flex-direction: column;
+          padding: 6px 10px;
+        }}
+        .chat-bubble {{
+          padding: 10px 14px;
+          margin: 6px 0;
+          border-radius: 14px;
+          max-width: 78%;
+          font-size: 15px;
+          line-height: 1.4;
+          word-wrap: break-word;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }}
+        .user {{
+          background-color: #dcf8c6;
+          align-self: flex-end;
+          text-align: right;
+          border-bottom-right-radius: 4px;
+        }}
+        .bot {{
+          background-color: #ffffff;
+          align-self: flex-start;
+          text-align: left;
+          border-bottom-left-radius: 4px;
+        }}
+        b {{ font-weight: 500; }}
+      </style>
+    </head>
+    <body>
+      <div class="chat-container">
         <div class="chat-bubble {role}">
-            <b>{name}:</b> {msg['content']}
+          <b>{name}:</b> {msg['content']}
         </div>
-    </div>
+      </div>
+    </body>
+    </html>
     """
+
     components.html(bubble_html, height=height, scrolling=False)
 
-
-
+# --- Input ---
 user_input = st.chat_input("Type your message here...")
 
 if user_input:
@@ -240,8 +265,3 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
-
-
-
-
-
