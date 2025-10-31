@@ -187,7 +187,7 @@ if "memory" not in st.session_state:
 st.markdown("""
     <style>
     iframe {
-        margin: 2px 0 !important;   /* reduce space between messages */
+        margin: 1px 0 !important;   /* reduce space between messages */
     }
     </style>
 """, unsafe_allow_html=True)
@@ -273,6 +273,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
