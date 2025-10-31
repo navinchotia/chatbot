@@ -219,7 +219,7 @@ for msg in st.session_state.messages:
           padding: 6px 10px;
         }}
         .chat-bubble {{
-          padding: 10px 14px;
+          padding: 6px 14px;
           margin: 4px 0;
           border-radius: 14px;
           max-width: 78%;
@@ -265,4 +265,5 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
