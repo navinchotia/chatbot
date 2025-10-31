@@ -214,6 +214,11 @@ if "messages" not in st.session_state:
 for msg in st.session_state.messages:
     role = "user" if msg["role"] == "user" else "bot"
     name = "You" if role == "user" else "Neha"
+
+    # Dynamically calculate height based on message length
+    msg_length = len(msg["content"])
+    height = min(300, max(80, msg_length // 2))  # between 80–300px
+
     bubble_html = f"""
     <div class="chat-container">
         <div class="chat-bubble {role}">
@@ -221,7 +226,8 @@ for msg in st.session_state.messages:
         </div>
     </div>
     """
-    components.html(bubble_html, height=60, scrolling=False)
+    components.html(bubble_html, height=height, scrolling=False)
+
 
 
 user_input = st.chat_input("Type your message here...")
@@ -233,5 +239,6 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
