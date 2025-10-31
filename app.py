@@ -183,6 +183,14 @@ st.title("💬 Neha – Your Hinglish AI Friend")
 # --- Memory initialization ---
 if "memory" not in st.session_state:
     st.session_state.memory = load_memory()
+# Inject CSS globally (only once)
+st.markdown("""
+    <style>
+    iframe {
+        margin: 2px 0 !important;   /* reduce space between messages */
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- Chat Display ---
 if "messages" not in st.session_state:
@@ -265,6 +273,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
