@@ -212,8 +212,17 @@ if "messages" not in st.session_state:
     ]
 
 for msg in st.session_state.messages:
-    st.markdown(f"**{'You' if msg['role']=='user' else 'Neha'}:** {msg['content']}")
-    st.markdown("---")
+    role = "user" if msg["role"] == "user" else "bot"
+    name = "You" if role == "user" else "Neha"
+    bubble_html = f"""
+    <div class="chat-container">
+        <div class="chat-bubble {role}">
+            <b>{name}:</b> {msg['content']}
+        </div>
+    </div>
+    """
+    components.html(bubble_html, height=60, scrolling=False)
+
 
 user_input = st.chat_input("Type your message here...")
 
@@ -224,4 +233,5 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
