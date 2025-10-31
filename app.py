@@ -196,7 +196,7 @@ chat_css = """
 }
 body {
     background-color: #e5ddd5;
-    font-family: "Segoe UI", sans-serif;
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif !important;
 }
 </style>
 """
@@ -240,6 +240,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
