@@ -6,6 +6,7 @@ from datetime import datetime
 import pytz
 import requests
 import random
+import streamlit.components.v1 as components
 
 # -----------------------------
 # CONFIGURATION
@@ -200,43 +201,41 @@ def generate_reply(memory, user_input):
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
 st.title("💬 Neha – Your Hinglish AI Friend")
 
-# --- Location capture via browser ---
-browser_location = st.experimental_get_query_params()
-if "lat" in browser_location and "lon" in browser_location:
-    lat = float(browser_location["lat"][0])
-    lon = float(browser_location["lon"][0])
-    browser_geo = reverse_geocode(lat, lon)
-else:
-    browser_geo = get_ip_location()
-
-# --- Memory initialization ---
+# --- Get browser location ONCE ---
 if "memory" not in st.session_state:
     st.session_state.memory = load_memory()
-    st.session_state.memory["location"] = browser_geo
-    st.session_state.memory["timezone"] = browser_geo["timezone"]
-    save_memory(st.session_state.memory)
 
-# --- Inject browser JS for location ---
-st.components.v1.html(
-    """
-    <script>
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            const search = new URLSearchParams(window.location.search);
-            if (!search.has("lat")) {
-                search.set("lat", lat);
-                search.set("lon", lon);
-                window.location.search = search.toString();
+if "browser_location" not in st.session_state:
+    components.html(
+        """
+        <script>
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const data = {lat: lat, lon: lon};
+                window.parent.postMessage(data, "*");
+            },
+            (err) => {
+                window.parent.postMessage({error: err.message}, "*");
             }
-        },
-        (err) => console.log("Location denied:", err)
-    );
-    </script>
-    """,
-    height=0,
-)
+        );
+        </script>
+        """,
+        height=0,
+    )
+
+location_data = st.experimental_get_query_params()
+if "lat" in location_data and "lon" in location_data:
+    lat = float(location_data["lat"][0])
+    lon = float(location_data["lon"][0])
+    geo_info = reverse_geocode(lat, lon)
+else:
+    geo_info = get_ip_location()
+
+st.session_state.memory["location"] = geo_info
+st.session_state.memory["timezone"] = geo_info["timezone"]
+save_memory(st.session_state.memory)
 
 # --- Chat Display ---
 if "messages" not in st.session_state:
@@ -257,4 +256,3 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
-
