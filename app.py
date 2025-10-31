@@ -6,7 +6,6 @@ from datetime import datetime
 import pytz
 import requests
 import random
-import streamlit.components.v1 as components
 
 # -----------------------------
 # CONFIGURATION
@@ -30,7 +29,6 @@ def load_memory():
         "gender": None,
         "chat_history": [],
         "facts": [],
-        "location": None,
         "timezone": "Asia/Kolkata"
     }
 
@@ -55,35 +53,8 @@ def remember_user_info(memory, user_input):
     save_memory(memory)
 
 # -----------------------------
-# LOCATION DETECTION
+# TIME FUNCTION
 # -----------------------------
-def get_ip_location():
-    """Get user location by IP with better accuracy"""
-    try:
-        res = requests.get("https://ipwho.is/", timeout=5)
-        data = res.json()
-        if data.get("success"):
-            city = data.get("city", "Unknown City")
-            country = data.get("country", "Unknown Country")
-            tz = data.get("timezone", {}).get("id", "Asia/Kolkata")
-            return {"city": city, "country": country, "timezone": tz}
-        else:
-            return {"city": "Unknown", "country": "Unknown", "timezone": "Asia/Kolkata"}
-    except Exception:
-        return {"city": "Unknown", "country": "Unknown", "timezone": "Asia/Kolkata"}
-def reverse_geocode(lat, lon):
-    """Convert lat/lon to readable city"""
-    try:
-        url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
-        r = requests.get(url, headers={"User-Agent": "NehaChatbot/1.0"}, timeout=6)
-        data = r.json()
-        addr = data.get("address", {})
-        city = addr.get("city") or addr.get("town") or addr.get("village") or "Unknown City"
-        country = addr.get("country", "Unknown Country")
-        return {"city": city, "country": country, "timezone": "Asia/Kolkata"}
-    except:
-        return get_ip_location()
-
 def get_now(memory):
     tz_name = memory.get("timezone", "Asia/Kolkata")
     try:
@@ -118,19 +89,12 @@ def summarize_profile(memory):
     parts = []
     if memory.get("user_name"):
         parts.append(f"User ka naam {memory['user_name']} hai.")
-    if memory.get("location"):
-        parts.append(f"User {memory['location']['city']} mein hai.")
     if memory.get("facts"):
         parts.append("Recent info: " + "; ".join(memory["facts"][-3:]))
     return " ".join(parts) or "User ke baare mein abhi zyada info nahi hai."
 
 def build_system_prompt(memory):
     now = get_now(memory)
-    location_info = (
-        f"User location: {memory['location']['city']}, {memory['location']['country']}"
-        if memory.get("location")
-        else ""
-    )
     gender_style = ""
     if memory.get("gender") == "male":
         gender_style = "User male hai, tone slightly neutral rakho."
@@ -140,11 +104,11 @@ def build_system_prompt(memory):
         f"Tum ek friendly female Hinglish chatbot ho jiska naam {BOT_NAME} hai. "
         "Tumhara tone ek 30 saal ki ladki jaisa hai – modern, warm lekin short baat karti ho. "
         "Tum Delhi me rahti ho. Respond according to Delhi time zone. "
-        "Don't show you are a chatbot, assume imaginery personality of any random female with commom interests, life profile etc. "
+        "Don't show you are a chatbot, assume imaginary personality of any random female with common interests, life profile etc. "
         "Simple Hindi aur English mix mein baat karo. "
         "Kabhi bhi user ke gender ko directly mat mention karo. "
         "Do not repeat anything unless asked. Never use pronoun 'tu'. "
-        f"Aaj ka date aur time hai {now}. {location_info}. "
+        f"Aaj ka date aur time hai {now}. "
         f"{summarize_profile(memory)} {gender_style}"
     )
 
@@ -203,41 +167,9 @@ def generate_reply(memory, user_input):
 st.set_page_config(page_title="Neha – Your Hinglish AI Friend", page_icon="💬")
 st.title("💬 Neha – Your Hinglish AI Friend")
 
-# --- Get browser location ONCE ---
+# --- Memory initialization ---
 if "memory" not in st.session_state:
     st.session_state.memory = load_memory()
-
-if "browser_location" not in st.session_state:
-    components.html(
-        """
-        <script>
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                const data = {lat: lat, lon: lon};
-                window.parent.postMessage(data, "*");
-            },
-            (err) => {
-                window.parent.postMessage({error: err.message}, "*");
-            }
-        );
-        </script>
-        """,
-        height=0,
-    )
-
-location_data = st.experimental_get_query_params()
-if "lat" in location_data and "lon" in location_data:
-    lat = float(location_data["lat"][0])
-    lon = float(location_data["lon"][0])
-    geo_info = reverse_geocode(lat, lon)
-else:
-    geo_info = get_ip_location()
-
-st.session_state.memory["location"] = geo_info
-st.session_state.memory["timezone"] = geo_info["timezone"]
-save_memory(st.session_state.memory)
 
 # --- Chat Display ---
 if "messages" not in st.session_state:
@@ -258,4 +190,3 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
-
