@@ -175,6 +175,7 @@ st.markdown("""
     h1 {
         font-family: 'Poppins', 'Roboto', sans-serif !important;
         font-weight: 600 !important;
+        text-align: center !important;
         font-size: 20px !important;
         margin-top: -10px !important;
         margin-bottom: 10px !important;
@@ -283,6 +284,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
