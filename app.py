@@ -170,6 +170,18 @@ st.set_page_config(page_title="Neha â€“ Your Hinglish AI Friend", page_icon="ðŸ’
 # Inject some global page style (won't affect components.html iframe content,
 # but keeps the page consistent)
 st.markdown("""
+<style>
+    /* Custom title styling */
+    h1 {
+        font-family: 'Poppins', 'Roboto', sans-serif !important;
+        font-weight: 600 !important;
+        color: #075E54 !important;  /* WhatsApp green tone */
+        text-align: center !important;
+        letter-spacing: 0.5px;
+        margin-top: -10px !important;
+        margin-bottom: 10px !important;
+    }
+    </style>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
   .stApp { font-family: 'Roboto', sans-serif !important; }
@@ -273,6 +285,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
