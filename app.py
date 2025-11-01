@@ -189,7 +189,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💬 Neha – Your Hinglish AI Friend")
+st.title("💬 Neha – Your Hinglish AI Friend by Hindi Hour")
 
 # --- Memory initialization ---
 if "memory" not in st.session_state:
@@ -284,6 +284,7 @@ if user_input:
     st.session_state.messages.append({"role": "assistant", "content": reply})
     save_memory(st.session_state.memory)
     st.rerun()
+
 
 
 
